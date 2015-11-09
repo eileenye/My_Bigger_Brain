@@ -1,0 +1,350 @@
+#load data
+setwd("/Users/Eileen/Desktop/STA 141 Fall 2015/STA 141 Assignment 3")
+data = read.csv("digitsTrain.csv", header = T) #(dataframe)
+datamatrix = as.matrix(data) #labels are in rows, pixels are columns (matrix)
+head(datamatrix) #for inspecting the data
+
+#Prediction for Test Set 1
+#EUCLIDEAN
+#shuffle data by rows (digits)
+datamatrix = datamatrix[sample(nrow(datamatrix)),] #data shuffled by row
+head(datamatrix) #inspect new shuffled data
+dist_matrix = as.matrix(dist(datamatrix[,-1])) #matrix of distances (but not the label (-1))
+num_ofImages = nrow(dist_matrix) #number of observations (images)
+num_ofImages#5000 observations
+#5 fold cross validation (test and training set)
+groupId = rep(1:5, each = round(5000/5))[1:5000]
+test1 = dist_matrix[groupId == 1, -which(groupId == 1)] #reads the distance of 1st test set, minus the 'block' which is the distance comparison to itself(should be 0)
+test1
+test = function(i) dist_matrix[groupId == i, -which(groupId == i)]
+test1 = test(1)
+test1 = cbind(matrix(NA, ncol = 1000, nrow = 1000), test1)
+test2 = test(2) 
+test2 = cbind(test2[,1:1000], matrix(NA, ncol = 1000, nrow = 1000), test2[,1001:4000])
+test3 = test(3)
+test3 = cbind(test3[,1:2000], matrix(NA, ncol = 1000, nrow = 1000), test3[,2001:4000])
+test4 = test(4)
+test4 = cbind(test4[,1:3000], matrix(NA, ncol = 1000, nrow = 1000), test4[,3001:4000])
+test5 = test(5)
+test5 = cbind(test5[,1:4000], matrix(NA, ncol = 1000, nrow = 1000))
+dim(test5)
+#DELETE AFTER: prediction for test 1
+k3nn = order(test1[1,])[1:3] #k=3 nearest neighbors (returns index). move the index by 1000 since dimension of this is 1000x4000
+k3nn #3353 1580 2227
+dist_matrix[k3nn] #distance #1521.443 1522.956 1546.566
+#K nearest neighbors 
+library(functional)
+knn = function(k, test){
+  testMatrix = t(as.matrix(apply(test, 1, function(row){ #matrix of all knns k=5
+    labels[order(row)[1:k]]
+  })))
+  prediction = as.matrix(apply(testMatrix, 1, Compose(table,function(i) i==max(i),which, names,function(i){ 
+    i[1]})))
+  prediction
+}
+#nearest neighbors when k = 1
+labels = as.character(datamatrix[,1])
+head(labels)
+test1_matrix1 = t(as.matrix(apply(test1, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+#prediction for Test Set 1
+k1 = t(as.matrix(test1_matrix1)) #vector of all the predictions
+k3 = knn(3, test1)
+k5 = knn(5, test1)
+k7 = knn(7, test1)
+k9 = knn(9, test1)
+k11 = knn(11, test1)
+yHat = data.frame(k1, k3, k5, k7, k9, k11)
+head(yHat, 15)
+#MANHATTAN
+#distance matrix with metric: manhattan
+dist_matrix2 = as.matrix(dist(datamatrix[,-1], method = "manhattan"))
+#5 fold cross validation (test and training set)
+groupId = rep(1:5, each = round(5000/5))[1:5000]
+test1_M = dist_matrix2[groupId == 1, -which(groupId == 1)] #reads the distance of 1st test set, minus the 'block' which is the distance comparison to itself(should be 0)
+test_M = function(i) dist_matrix2[groupId == i, -which(groupId == i)]
+test1_M = test_M(1)
+test1_M = cbind(matrix(NA, ncol = 1000, nrow = 1000), test1_M)
+test2_M = test_M(2)
+test2_M = cbind(test2_M[,1:1000], matrix(NA, ncol = 1000, nrow = 1000), test2_M[,1001:4000])
+test3_M = test_M(3)
+test3_M = cbind(test3_M[,1:2000], matrix(NA, ncol = 1000, nrow = 1000), test3_M[,2001:4000])
+test4_M = test_M(4)
+test4_M = cbind(test4_M[,1:3000], matrix(NA, ncol = 1000, nrow = 1000), test4_M[,3001:4000])
+test5_M = test_M(5)
+test5_M = cbind(test5_M[,1:4000], matrix(NA, ncol = 1000, nrow = 1000))
+train1_M = dist_matrix2[groupId != 1, -which(groupId == 1)]
+train_M = function(i) dist_matrix2[groupId != i, -which(groupId == i)]
+train1_M = train_M(1)
+train2_M = train_M(2) #...
+train3_M = train_M(3)
+train4_M = train_M(4)
+train5_M = train_M(5)
+#DELETE AFTER: prediction for test 1
+k3nn_M = order(test1_M[1,])[1:3] #k=3 nearest neighbors (returns index)
+k3nn_M #3353 1580 2370
+dist_matrix[k3nn_M] #1521.443 1522.956 1609.607 distance
+#nearest neighbors when k = 1
+labels = as.character(datamatrix[,1])
+test1_matrix1_M = t(as.matrix(apply(test1_M, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+head(test1_matrix1_M)
+#prediction of each observation in test 1 for k
+k1_M = t(as.matrix(test1_matrix1_M)) #vector of all the predictions
+k3_M = knn(3, test1_M)
+k5_M = knn(5, test1_M)
+k7_M = knn(7, test1_M)
+k9_M = knn(9, test1_M)
+k11_M = knn(11, test1_M)
+yHat_M = data.frame(k1_M, k3_M, k5_M, k7_M, k9_M, k11_M)
+head(yHat_M, 15)
+#START#Error rate
+MR = sapply(1:ncol(yHat), function(i) mean(yHat[,i] != labels[1:1000])) #k = 3
+MR # 0.065 0.063 0.070 0.073 0.072 0.071
+mean(MR) #0.069 better
+MR_M = sapply(1:ncol(yHat_M), function(i) mean(yHat_M[,i] != labels[1:1000])) #k = 3
+MR_M #0.079 0.078 0.090 0.090 0.086 0.094
+mean(MR_M) #0.08616667
+
+#Prediction for Test Set 2:
+#EUCLIDEAN
+test2_matrix1 = t(as.matrix(apply(test2, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_test2 = t(as.matrix(test2_matrix1))
+k3_test2 = knn(3, test2)
+k5_test2 = knn(5, test2)
+k7_test2 = knn(7, test2)
+k9_test2 = knn(9, test2)
+k11_test2 = knn(11, test2)
+yHat_test2 = data.frame(k1_test2, k3_test2, k5_test2, k7_test2, k9_test2, k11_test2)
+head(yHat_test2, 15)
+#MANHATTAN
+test2_matrix2 = t(as.matrix(apply(test2_M, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_M_test2 = t(as.matrix(test2_matrix2))
+k3_M_test2 = knn(3, test2_M)
+k5_M_test2 = knn(5, test2_M)
+k7_M_test2 = knn(7, test2_M)
+k9_M_test2 = knn(9, test2_M)
+k11_M_test2 = knn(11, test2_M)
+yHat_M_test2 = data.frame(k1_M_test2, k3_M_test2, k5_M_test2, k7_M_test2, k9_M_test2, k11_M_test2)
+head(yHat_M_test2, 15)
+#Error rate
+MR_test2 = sapply(1:ncol(yHat_test2), function(i) mean(yHat_test2[,i] != labels[1001:2000])) #k = 3
+MR_test2 #0.067 0.062 0.063 0.069 0.078 0.081
+mean(MR_test2) #0.07 better
+MR_M_test2 = sapply(1:ncol(yHat_M_test2), function(i) mean(yHat_M_test2[,i] != labels[1001:2000])) #k = 1/3
+MR_M_test2 #0.074 0.074 0.083 0.097 0.100 0.103
+mean(MR_M_test2) #0.0885
+
+#Prediction for Test Set 3:
+#EUCLIDEAN
+test3_matrix1 = t(as.matrix(apply(test3, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_test3 = t(as.matrix(test3_matrix1))
+k3_test3 = knn(3, test3)
+k5_test3 = knn(5, test3)
+k7_test3 = knn(7, test3)
+k9_test3 = knn(9, test3)
+k11_test3 = knn(11, test3)
+yHat_test3 = data.frame(k1_test3, k3_test3, k5_test3, k7_test3, k9_test3, k11_test3)
+head(yHat_test3, 15)
+#MANHATTAN
+test3_matrix2 = t(as.matrix(apply(test3_M, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_M_test3 = t(as.matrix(test3_matrix2))
+k3_M_test3 = knn(3, test3_M)
+k5_M_test3 = knn(5, test3_M)
+k7_M_test3 = knn(7, test3_M)
+k9_M_test3 = knn(9, test3_M)
+k11_M_test3 = knn(11, test3_M)
+yHat_M_test3 = data.frame(k1_M_test3, k3_M_test3, k5_M_test3, k7_M_test3, k9_M_test3, k11_M_test3)
+head(yHat_M_test3, 15)
+#Error rate
+MR_test3 = sapply(1:ncol(yHat_test3), function(i) mean(yHat_test3[,i] != labels[2001:3000])) #k = 1
+MR_test3 #0.058 0.060 0.062 0.066 0.076 0.079
+mean(MR_test3) #0.06683333 better
+MR_M_test3 = sapply(1:ncol(yHat_M_test3), function(i) mean(yHat_M_test3[,i] != labels[2001:3000])) #k = 1
+MR_M_test3 #0.065 0.072 0.074 0.080 0.087 0.095
+mean(MR_M_test3) #0.07883333
+
+#Prediction for Test Set 4:
+#EUCLIDEAN
+test4_matrix1 = t(as.matrix(apply(test4, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_test4 = t(as.matrix(test4_matrix1))
+k3_test4 = knn(3, test4)
+k5_test4 = knn(5, test4)
+k7_test4 = knn(7, test4)
+k9_test4 = knn(9, test4)
+k11_test4 = knn(11, test4)
+yHat_test4 = data.frame(k1_test4, k3_test4, k5_test4, k7_test4, k9_test4, k11_test4)
+head(yHat_test4, 15)
+#MANHATTAN
+test4_matrix2 = t(as.matrix(apply(test4_M, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_M_test4 = t(as.matrix(test4_matrix2))
+k3_M_test4 = knn(3, test4_M)
+k5_M_test4 = knn(5, test4_M)
+k7_M_test4 = knn(7, test4_M)
+k9_M_test4 = knn(9, test4_M)
+k11_M_test4 = knn(11, test4_M)
+yHat_M_test4 = data.frame(k1_M_test4, k3_M_test4, k5_M_test4, k7_M_test4, k9_M_test4, k11_M_test4)
+head(yHat_M_test4, 15)
+#Error rate
+MR_test4 = sapply(1:ncol(yHat_test4), function(i) mean(yHat_test4[,i] != labels[3001:4000])) #k = 3
+MR_test4 #0.072 0.064 0.074 0.079 0.077 0.084
+mean(MR_test4) #0.075 better
+MR_M_test4 = sapply(1:ncol(yHat_M_test4), function(i) mean(yHat_M_test4[,i] != labels[3001:4000])) #k = 3
+MR_M_test4 #0.075 0.071 0.080 0.085 0.089 0.091
+mean(MR_M_test4) #0.08766667
+
+#Prediction for Test Set 5:
+#EUCLIDEAN
+test5_matrix1 = t(as.matrix(apply(test5, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_test5 = t(as.matrix(test5_matrix1))
+k3_test5 = knn(3, test5)
+k5_test5 = knn(5, test5)
+k7_test5 = knn(7, test5)
+k9_test5 = knn(9, test5)
+k11_test5 = knn(11, test5)
+yHat_test5 = data.frame(k1_test5, k3_test5, k5_test5, k7_test5, k9_test5, k11_test5)
+head(yHat_test5, 15)
+#MANHATTAN
+test5_matrix2 = t(as.matrix(apply(test5_M, 1, function(row){ #matrix of all knns k=1
+  labels[order(row)[1]]
+})))
+k1_M_test5 = t(as.matrix(test5_matrix2))
+k3_M_test5 = knn(3, test5_M)
+k5_M_test5 = knn(5, test5_M)
+k7_M_test5 = knn(7, test5_M)
+k9_M_test5 = knn(9, test5_M)
+k11_M_test5 = knn(11, test5_M)
+yHat_M_test5 = data.frame(k1_M_test5, k3_M_test5, k5_M_test5, k7_M_test5, k9_M_test5, k11_M_test5)
+head(yHat_M_test5, 15)
+#Error rate
+MR_test5 = sapply(1:ncol(yHat_test5), function(i) mean(yHat_test5[,i] != labels[4001:5000])) #k = 1
+MR_test5 #0.065 0.072 0.070 0.068 0.074 0.078
+mean(MR_test5) #0.07116667 better
+MR_M_test5 = sapply(1:ncol(yHat_M_test5), function(i) mean(yHat_M_test5[,i] != labels[4001:5000])) #k = 1
+MR_M_test5 #0.076 0.081 0.081 0.081 0.080 0.081
+mean(MR_M_test5) #0.08
+
+
+#2. CV misclassification rate vs k and distance metrics
+#Test Set 1
+plot(c(1,3,5,7,9,11), MR, ylim = c(0.06,0.1), col = 'blue', xlab = 'k', ylab = 'Misclassification Rate', main = 'Misclassification Rate for Each k in Euclidean and Manhattan', axes = FALSE,type = 'l')
+lines(c(1,3,5,7,9,11), MR_M, col = 'red')
+axis(2) 
+axis(1, at = c(1,3,5,7,9,11)) 
+box()
+legend('topleft','groups', legend = c('Euclidean','Manhattan'), col = c('blue','red'), lty = 1, bty = 'n')
+#Test Set 2
+plot(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_test2, col = 'blue', ylim = c(0.06, 0.11),xlab = 'k', ylab = 'Misclassification Rate', main = 'Misclassification Rate for Each k in Euclidean and Manhattan', axes = FALSE,type = 'l')
+points(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_M_test2, col = 'red', pch = 21, type = 'l')
+axis(2) 
+axis(1, at = c(1,3,5,7,9,11)) 
+box()
+legend('topleft', legend = c('Euclidean','Manhattan'), col = c('blue','red'), lty = 1, bty = 'n')
+#Test Set 3
+plot(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_test3, ylim = c(0.06, 0.11),col = 'blue', xlab = 'k', ylab = 'Misclassification Rate', main = 'Misclassification Rate for Each k in Euclidean and Manhattan', axes = FALSE,type = 'l')
+points(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_M_test3, col = 'red', pch = 21, type = 'l')
+axis(2) 
+axis(1, at = c(1,3,5,7,9,11)) 
+box()
+legend('topleft', legend = c('Euclidean','Manhattan'), col = c('blue','red'), lty = 1, bty = 'n')
+#Test Set 4
+plot(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_test4,ylim = c(0.06, 0.1), col = 'blue', xlab = 'k', ylab = 'Misclassification Rate', main = 'Misclassification Rate for Each k in Euclidean and Manhattan', axes = FALSE,type = 'l')
+points(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_M_test4, col = 'red', pch = 21, type = 'l')
+axis(2) 
+axis(1, at = c(1,3,5,7,9,11)) 
+box()
+legend('topleft', legend = c('Euclidean','Manhattan'), col = c('blue','red'), lty = 1, bty = 'n')
+#Test Set 5
+plot(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_test5, ylim = c(0.06, 0.09),col = 'blue', xlab = 'k', ylab = 'Misclassification Rate', main = 'Misclassification Rate for Each k in Euclidean and Manhattan', axes = FALSE,type = 'l')
+points(as.matrix(c(1,3,5,7,9,11), ncol = 1), MR_M_test5, col = 'red', pch = 21, type = 'l')
+axis(2) 
+axis(1, at = c(1,3,5,7,9,11)) 
+box()
+legend('topleft', legend = c('Euclidean','Manhattan'), col = c('blue','red'), lty = 1, bty = 'n')
+
+
+#3. Calculate the confusion matrix for the training set using the chosen value of k and metric.
+  #final confusion matrix is a 10*10 matrix with the best distance computing method and K we choose
+  #often used as a tool to validate the accuracy of k-NN classification
+#Test Set 1
+labels = as.matrix(as.numeric(labels))
+confusionMatrix = as.matrix(table(labels[1:1000], k3))
+confusionMatrix
+#Test Set 2
+confusionMatrix2 = as.matrix(table(labels[1001:2000], k3_test2))
+confusionMatrix2
+#Test Set 3
+confusionMatrix3 = as.matrix(table(labels[2001:3000], k1_test3))
+confusionMatrix3
+#Test Set 4
+confusionMatrix4 = as.matrix(table(labels[3001:4000], k3_test4))
+confusionMatrix4
+#Test Set 5
+confusionMatrix5 = as.matrix(table(labels[4001:5000], k1_test5))
+confusionMatrix5
+
+#4. Which digits were generally classified best? worst?
+  #ANS1: The 1's and 7's were generally classified the best. The 8's were classified the worst
+  #ANS2: The 1's and 7's. worst were 8's
+  #ANS3: The 1's,3's 7's. worst were 9's
+  #ANS4: The 1's,2's, 3's. worst was 8's
+  #ANS5: The 1's and 7's. worst was 8's
+  #OVERALL ANS: The 1's and 7's were classified the bes, and 8's were classified the worst
+#5. Which digits were generally confused with others?
+  #ANS1: the 8's were generally confused with the 3's. As we can see, 8 was the highest misclassification number.
+    #and that lies in the predicted 3's and the actual 8's
+  #ANS2: The 4's were confused by 9's
+  #ANS3: The 4's were confused by 9's
+  #ANS4: The 4's were confused by 9's
+  #ANS5: The 4's were confused by 9's. 5's confused by 3's. 2's confused by 1's.
+  #OVERALL ANS: 4's confused by 9's a lot
+#6. Show some of the digits that were mis-classified that were difficult for a human to classify. Suggest why these were misclassified.
+getImage =
+  function(vals)
+  {
+    matrix(as.integer(vals), 28, 28, byrow = TRUE)
+  }
+
+draw = function(vals, colors = rgb((255:0)/255, (255:0)/255, (255:0)/255), ...)
+{
+  if(!is.matrix(vals))
+    vals = getImage(vals)
+  
+  m = t(vals)  # transpose the image
+  m = m[,nrow(m):1]  # turn up-side-down
+  
+  image(m, col = colors, ..., xaxt = "n", yaxt = "n")
+}
+
+#look at the predictions and actual labels next to each other
+EucPred = rbind(k3, k3_test2, k1_test3, k3_test4, k1_test5)
+Actual_Pred = cbind(labels, EucPred)
+
+#9, but predicted a 1
+draw(datamatrix[7,]) #looks like a i
+labels[7] #says it's a 1
+EucPred[7] #predicted a 1
+#7, but predicted to be 9 
+draw(datamatrix[772,]) #looks like a 7
+labels[772] #says it's a 7
+EucPred[772] #predicted a '9'
+#1, but predicted to be 3
+draw(datamatrix[151,]) #looks like a 2
+labels[151] #says it's a 1
+EucPred[151] #predicted a 3
