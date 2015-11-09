@@ -1,0 +1,167 @@
+load(url("http://eeyore.ucdavis.edu/stat141/Data/vehicles.rda"))
+ls()
+#1 How many observations are there in the data set?
+lapply(vposts, na.omit)
+nrow(vposts) #34677
+#2 What are the names of the variables? and what is the class of each variable?
+names(vposts) #all 26 of them
+class(vposts) 
+str(vposts) #class are given after the colon (:)
+#3 What is the average price of all the vehicles? the median price? and the deciles? Displays these on a plot of the distribution of vehicle prices.
+p = vposts$price
+mean(p, na.rm = TRUE)
+median(p, na.rm = TRUE)
+quantile(p, na.rm = TRUE, probs = seq(0.1,0.9, by = 0.1))
+par(mar = c(5,5,5,5))
+hist(p, main='histogram of price', xlab = 'price of cars')
+rug(p,  lwd = 4, col = "red") #show the observations and allow you to see where the outliers are and how many there are
+#4 What are the different categories of vehicles, i.e. the type variable/column? What is the proportion for each category ?
+t = vposts$type #subset type in vposts
+levels(t) #categories of vehicles
+length(t) #34677 entries
+table.t = table(t)#number of each category
+table.t
+prop.t = table.t/sum(table.t)#proportion for each category
+prop.t
+#5 Display the relationship between fuel type and vehicle type. Does this depend on transmission type?
+  #break it by transmission and see the relationship btwn fuel and type
+f = vposts$fuel
+table.f = table(f)
+table.f
+prop.f = table.f/sum(table.f)
+prop.f
+trans = vposts$transmission
+table.trans = table(trans)
+table.trans
+prop.trans = table.trans/sum(table.trans)
+prop.trans
+library(lattice)
+barchart(vposts$type ~ vposts$fuel | vposts$transmission, xlim = levels(vposts$fuel), las = 2) #relationship between fuel and type by transmission
+#6 How many different cities are represented in the dataset?
+c = vposts$city
+levels(c) #7
+#7 Visually display how the number/proportion of "for sale by owner" and "for sale by dealer" varies across city?
+table.c.owner = table(c, owner)
+table.c.owner
+prop.c.owner = table.c.owner/sum(table.c.owner)
+prop.c.owner
+barplot(table.c.owner, main = 'Car Sales in Cities by Sellers', 
+        xlab = 'Cities', ylab = 'Owner', horiz = TRUE, legend.text = TRUE, 
+        args.legend = c(cex = 0.5))
+prop.c.owner = prop.table(table.c.owner)
+barplot(prop.c.owner, main = 'Proportion of Car Sales in Cities by Sellers', 
+        xlab = 'Cities', ylab = 'Owner', horiz = TRUE, 
+        legend.text = TRUE, args.legend = c(cex = 0.5))
+#8 What is the largest price for a vehicle in this data set? Examine this and fix the value. Now examine the new highest value for price.
+max(p) #NA
+max(p, na.rm = TRUE) #max number is 60003000
+boxplot(p, main = "boxplot of price") #boxplot of price
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 7000 #set max num to 7000 (google the make and model and stuff later)
+table(!is.na(p) & p== max(p,na.rm = TRUE)) #table
+length(!is.na(p) & p == max(p,na.rm=TRUE)) #number of observation
+max(p, na.rm = T) #new max number is 30002500
+hist(p)
+rug(p,  lwd = 4, col = "red")
+summary(p)
+quantile(p, na.rm = TRUE, probs = seq(0.99, by = 0.1))
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 2750 #set max num to 7000 (google the make and model and stuff later)
+max(p, na.rm = T)
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 9999 #set max num to 7000 (google the make and model and stuff later)
+max(p, na.rm = T)
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 5695 #set max num to 7000 (google the make and model and stuff later)
+max(p, na.rm = T)
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 5595 #set max num to 7000 (google the make and model and stuff later)
+max(p, na.rm = T)
+hist(p)
+rug(p,  lwd = 4, col = "red")
+summary(p)
+quantile(p, na.rm = T, probs = seq(0.95, by = 0.1))
+#9 What are the three most common makes of cars in each city for 
+  #"sale by owner" and for "sale by dealer"? Are they similar or quite different?
+table.makerbyCityOwner =table(vposts$maker, vposts$city, vposts$byOwner)
+g = split(vposts , vposts$byOwner)
+g1=table((g$T)$maker,(g$T)$city)
+g1
+makerByCityOwner = split(g$"TRUE"$maker,  g$"TRUE"$city)
+lapply(makerByCityOwner,  function(m) head(sort( table(m),decreasing = TRUE),3))
+g2 = table((g$F)$maker, (g$F)$city)
+g2
+makerByCityOwner2 = split(g$"FALSE"$maker, g$"FALSE"$city)
+lapply(makerByCityOwner2, function(x) head(sort(table(x), decreasing = TRUE), 3))
+#10 Visually compare the distribution of the age of cars for different cities and for 
+  #"sale by owner" and "sale by dealer". Provide an interpretation of the plots, 
+  #i.e., what are the key conclusions and insights?
+byowner = subset(vposts, byOwner==TRUE)
+bydealer = subset(vposts, byOwner==FALSE)
+agebyowner =  2016 - byowner$year
+agebydealer = 2016 - bydealer$year
+x1 = split(agebyowner, byowner$city)
+x2 = split(agebydealer, bydealer$city)
+ageofcar = 2016 - vposts$year
+max(ageofcar) #2012
+ageofcar[ageofcar == max(ageofcar)] = 100 #set max number to 100
+max(ageofcar) #116
+min(ageofcar) #-6
+ageofcar[ageofcar == min(ageofcar)] = 6 #set min number to 6
+min(ageofcar) #0
+par(mfrow=c(3,3))
+sapply(1:7, function(i) hist(x1[[i]], xlab = 'age of car', ylab = 'sale by owner', main = names(x1)[i]))
+par(mfrow = c(3,3))
+sapply(1:7, function(b) hist(x2[[b]], xlab = 'age of car', 
+                             ylab = 'sale by dealer', main = names(x2)[b], xlim=range(0, 120, na.rm=TRUE)))
+#11 Plot the locations of the posts on a map? What do you notice?
+library(maps)
+par(mfrow = c(1,1))
+map('state')
+title(main = 'Locations of the Posts')
+points(vposts$long, vposts$lat, col = "green", pch = ".")
+#12 Summarize the distribution of fuel type, drive, transmission, and vehicle type. 
+  #Find a good way to display this information.
+sapply(list(vposts$fuel, vposts$drive, vposts$transmission, vposts$type), levels)
+dotplot(table(vposts$fuel, vposts$drive, vposts$transmission, vposts$type), auto.key = TRUE) #auto.key=TRUE shows me the legend of the car types
+#13Plot odometer reading and age of car? Is there a relationship? 
+  #Similarly, plot odometer reading and price? Interpret the result(s). 
+  #Are odometer reading and age of car related?
+ageofcar = 2016 - vposts$year
+odometers = vposts$odometers
+plot(ageofcar, vposts$odometers, ylab = 'age of car', xlab = 'odometer', main = 'Relationship of Car Age and Odometer', cex = 0.5, col = 'blue')
+plot(p, vposts$odometers, ylab = 'price of car', xlab = 'odometer', main = 'Relationship of Car Price and Odometer', col = 'red')
+#14 Identify the "old" cars. What manufacturers made these? What is the price distribution for these?
+tenold = (ageofcar > 10)
+subset(ageofcar, tenold == TRUE)
+table(tenold, vposts$maker) #16934 old cars
+oldcars = subset(vposts,vposts$year > 10 & vposts$year < 1975,na.rm=TRUE)
+densityplot(~ price, oldcars, group = maker, plot.points = FALSE, auto.key = list(space = "right"),
+            main="Price Distribution of Old Cars ", xlim=c(0,1.25e4), subset = !is.na(price)  )
+#15 I have omitted one important variable in this data set. What do you think it is? 
+  #Can we derive this from the other variables? 
+  #If so, sketch possible ideas as to how we would compute this variable.
+##ANSWER = color of the car. subset body of dataframe. find words/phrases with the words color.
+  ## compute the number of differnt colors. 
+View(vposts$body)
+
+#16 Display how condition and odometer are related. Also how condition and price are related. 
+  #And condition and age of the car. Provide a brief interpretation of what you find.
+  #If you display results in a table, consider a more appropriate plot.
+  #If you do use a table, consider the number of digits in the numbers displayed.
+  #If you use a single plot, consider using a legend to identify the different sub-elements.
+  #If you use multiple panels/plots, consider if the scales are the same and ensure they are if appropriate.
+  #Make certain plots have the approriate labels on the axes.
+unique(vposts$condition)
+vposts$newcondition = character(nrow(vposts))
+vposts$newcondition[ vposts$condition %in% c('new', 'superb original') & !is.na(vposts$condition)] = "new"
+vposts$newcondition[ vposts$condition %in% c('excellent', 'like new', 'very good', 'surperb original', 
+                                             'mint', 'certified') & !is.na(vposts$condition)] = "excellent"
+vposts$newcondition[ vposts$condition %in% c('preowned', 'pre owned', 'preownes', 'pre-owned', 'good', 'nice' ) & !is.na(vposts$condition)] = "good"
+vposts$newcondition[vposts$condition %in% c('fair', 'used', '0used', 'nice teuck') & !is.na(vposts$condition)] = "fair"
+vposts$newcondition[vposts$condition %in% c('207,400', 'ac/heater', 'complete parts car, blown engine', 'hit and run :( gently', 
+                                            'needs restoration!', 'needs work/for parts', 'restored', 'needs restored', 'needs bodywork', 'salvage', 
+                                            'needs total restore', 'not running', 'project car', 'restoration project', 'rough but runs', 'project', 
+                                            'front side damage', 'muscle car restore', 'needs work', 'nice rolling restoration', 'rebuildable project', 
+                                            'restore', 'parts', 'honnda', 'carfax guarantee!!') & !is.na(vposts$condition)] = "poor"
+boxplot(vposts$odometer ~ vposts$newcondition, ylim = c(0, 4000000), xlim = levels(vposts$newcondition), 
+        ylab = 'odometer', xlab = 'condition', main = 'Relationship Between Condition and Odometer of Cars')
+boxplot(p ~ vposts$newcondition, xlim = levels(vposts$newcondition), ylab = 'odometer', xlab = 'condition', 
+        main = 'Relationship Between Condition and Price of Cars')
+boxplot(ageofcar ~ vposts$newcondition, xlim = levels(vposts$newcondition), ylab = 'odometer', 
+        xlab = 'condition', main = 'Relationship Between Condition and Age of Cars')
