@@ -1,0 +1,231 @@
+load("~/Desktop/STA 141 Fall 2015/STA 141 Assignment 1/STA 141 Data/vehicles.rda")
+#1. Extract the price being asked for the vehicle from the body column, 
+  #if it is present, and check if it agrees with the actual price in the price column.
+length(vposts)
+nrow(vposts) #34677
+bod = vposts$body
+des = vposts$description
+
+library(stringi)
+price = function(i){
+  tmp = bod[[i]]
+  tip = des[[i]]
+  
+  #extract all prices in Body and Description
+  bodyPrice = stri_extract_all_regex(tmp, "(?<=\\$)[0-9 ,]*") #FIXME. #152 has spaces
+  desPrice = stri_extract_all_regex(tip, "(?<=\\$)[0-9 ,]*") #FIXME: figure out how to get rid of the "years" at end of price #s
+  int = as.integer(gsub("[[:punct:][:blank:][:alpha:]]*","",unlist(bodyPrice)))
+  int2 = as.integer(gsub("[[:punct:][:blank:][:alpha:]]*","",unlist(desPrice)))
+  #get the maximum price
+  max(max(int), max(int2), na.rm = TRUE)
+}
+
+#prices for each listing
+#found numbers after '$', but some were mixed inside with 'Year'
+p = sapply(1:length(bod), price)
+table(p)
+length(bod) - 19686
+table(vposts$price == p) #10228 matched it's prices, rest doesn't match or weren't found in body/description
+
+#2. Extract a Vehicle Identication Number (VIN) from the body, if it is present. 
+  #We could use this to both identify details of the car (year it was built, type and model of the car, 
+  #safety features, body style, engine type, etc.) and also use it to get historical information about the particular car. 
+  #Add the VIN, if available, to the data frame. How many postings include the VIN?
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+VIN = function(i){
+  tmp = bod[[i]]
+  tip = des[[i]]
+  #extract all prices in Body and Description
+  bodyVIN = stri_extract_all_regex(tmp, "[0-9A-Z]{17}") #FIXME: cars before 1891? (11-15 characters)
+  Mode(unlist(bodyVIN))
+  #get the maximum price
+}
+
+VIN_Numbers = sapply(1:length(bod), VIN)
+length(bod) - sum(is.na(VIN_Numbers)) #8979 found
+New_Vposts = cbind(vposts, VIN_Numbers)
+
+#3. Extract phone numbers from the body column, 
+  #and again add these as a new column. How many posts include a phone number?
+mgsub <- function(pattern, replacement, x, ...) {
+  if (length(pattern)!=length(replacement)) {
+    stop("pattern and replacement do not have the same length.")
+  }
+  result <- x
+  for (i in 1:length(pattern)) {
+    result <- gsub(pattern[i], replacement[i], result, ...)
+  }
+  result
+}
+
+num = mgsub(c('zero|ZERO', 'one|ONE', 'two|TWO', 'three|THREE', 'four|FOUR', 'five|FIVE', 'six|SIX', 'seven|SEVEN', 'eight|EIGHT', 'nine|NINE'), c(0,1,2,3,4,5,6,7,8,9), bod)
+
+phone = function(i){
+  tmp = num[i]
+  
+  #extract all prices in Body and Description
+  bodyPhone = stri_extract_all_regex(tmp, "[[:digit:]]{7,11}|[[:digit:]\\(\\)\\-]{8,15}") #FIXME. phones with spaces?
+  Mode(unlist(bodyPhone))
+}
+phone_Number = sapply(1:length(bod), phone)
+phone_Number = gsub('\\-|\\(|\\)', '', phone_Number)
+
+length(bod) - sum(is.na(phone_Number)) #found 17079
+New_Vposts = cbind(New_Vposts, phone_Number)
+
+#4. Extract email addresses from the body column, and again add these as a new column. 
+  #How many posts include an email address?
+email = function(i){
+  tmp = bod[[i]]
+  
+  #extract all prices in Body and Description
+  bodyEmail = stri_extract_all_regex(tmp, "([[:alnum:]|[:punct:]]+@[[:alnum:]|[:punct:]]+?\\.(com|COM|net|NET|org|ORG|edu|EDU){1})|((www\\.|http://|https://)[[:alnum:]|[:punct:]]+?\\.(com|COM|net|NET|org|ORG|edu|EDU){1})") #FIXME. #152 has spaces
+  Mode(unlist(bodyEmail))
+}
+
+email_contacts = sapply(1:length(bod), email)
+emailList = which( !is.na(email_contacts))
+email_contacts[emailList]
+email_contact = gsub('(etc\\.\\.\\.|Info:|CONTACT:|e\\-mail:|Email:)','', email_contacts)
+email_contact[emailList]
+length(bod) - sum(is.na(email_contact)) #matched 9350
+New_Vposts = cbind(New_Vposts, as.character(email_contact))
+
+#5. Find the year in the description or body and compare it with the value in the year column.
+year = function(i){
+  tmp = bod[[i]]
+  
+  #extract all prices in Body and Description
+  bodyYear = stri_extract_all_regex(tmp, "(2)(0)[0-9]{2}|(1)(9)[0-9]{2}") 
+  Mode(unlist(bodyYear))
+}
+
+Year_Made = sapply(1:length(bod), year)
+Year_Made
+table(vposts$year == Year_Made)
+
+#6. Determine the model of the car, e.g., S60, Boxter, Cayman, 911, Jetta. 
+  #This includes correcting mis-spelled or abbreviated model names. 
+  #You may find the agrep() function useful. You should also use statistics, 
+  #i.e., counts to see how often a word occurs in other posts and if such a spelling is 
+  #reasonable, and whether this model name has been seen with that maker often.
+  #When doing these questions, you will very likely have to iterate by developing a 
+  #regression expression, and seeing what results it gives you and adapting it. 
+  #Furthermore, you will probably have to use two or more strategies when looing for 
+  #a particular piece of information. This is expected; 
+  #the data are not nice and regularly formatted.
+unique(New_Vposts$maker)
+
+Models = function(make_index, regex){
+  ModelsList = stri_extract_all_regex(toupper(bymakers[[make_index]][,11]), toupper(regex))
+  model = sapply(ModelsList, Mode)
+  model
+}
+
+
+Specific_Models = function(makerIndex, toreplace, regex){
+  bymakers = split(New_Vposts, New_Vposts$maker)
+  ormakes = paste(unique(New_Vposts$maker), sep='', collapse = '|')
+  RX = c("(?<=", ormakes, ")", " [[:alnum:]]+")
+  RX = paste(RX, sep = '', collapse = '')
+  CarModels = mapply(Models, 1:length(bymakers), RX)
+  nonModels = which(grepl(toreplace, CarModels[[makerIndex]]))
+  ModelsList = stri_extract_all_regex(toupper(bymakers[[makerIndex]][,2]), regex)
+  model = sapply(ModelsList, Mode)
+  model
+}
+ormakes = paste(unique(New_Vposts$maker), sep='', collapse = '|')
+RX = c("(?<=", ormakes, ")", " [[:alnum:]]+")
+RX = paste(RX, sep = '', collapse = '')
+bymakers = split(New_Vposts, New_Vposts$maker)
+CarModels = mapply(Models, 1:length(bymakers), RX)
+
+MakerModels = function(i){
+  unique(CarModels[[i]])
+}
+
+ListofModels = sapply(1:length(bymakers), MakerModels)
+#ACURA
+ListofModels[1]
+nonAcura = "(2|3|1|EFFICIENT|LOW|DEALER|VERY|2005|NA)"
+acuraRX = "[[:alpha:]]{2}[X]{1}|[T|C|R]{1}[L]{1}|INTEGRA|LEGEND|SALVAGE|INTERGA"
+toAcura = mapply(Specific_Models, 1, nonAcura, acuraRX)
+toAcura = mgsub(c("INTERGA", "TSC", "TLS"), c("INTEGRA", "TSX", "TLX"), toAcura)
+unique(toAcura)
+CarModels[[1]] = toAcura
+#ALPHA ROMEO
+ListofModels[2]
+toAlphaRomeo = mapply(Specific_Models, 2, "NA", "164S|SPORT|SPIDER|164 S")
+CarModels[[2]] = toAlphaRomeo
+#AMC
+ListofModels[3]
+toAMC = mapply(Specific_Models, 3, "NA", "GREMLIN|PACER|MARLIN|JAVELIN")
+CarModels[[3]] = toAMC
+#ASTON MARTIN
+  #OK
+#AUDI
+ListofModels[5]
+toAudi = mapply(Specific_Models, 5, "NA|2001|2005|2006|2002|3|FOR|5|ALL ROAD", "[[:alpha:]]{1}[[:digit:]]{1}|QUATTRO| [[:digit:]]{3} |[[:alpha:]]{1} [[:digit:]]{1}|ALLROAD")
+toAudi
+CarModels[[5]] = toAudi
+CarModels
+
+#7. Pick two models of cars, one for different dealers. For each of these, separately explore 
+#the relationship between the price being asked for the vehicle, the number of miles (odometer), 
+#age of the car and condition. Does location (city) have an effect on this? Use a statistical model 
+#to be able to suggest the appropriate price for such a car given its age, mileage, and condition. 
+#You might consider a linear model, k-nearest neighbors, or a regression tree.
+#You need to describe why the method you chose is appropriate? what assumptions are needed and 
+#how reasonable they are? and how well if performs and how you determined this? Would you use it if you 
+#were buying or selling this type of car?
+New_Vposts = do.call(rbind, bymakers)
+CarModels = unlist(CarModels)
+New_Vposts$newcondition = character(nrow(New_Vposts))
+New_Vposts$newcondition[ New_Vposts$condition %in% c('new', 'superb original') & !is.na(New_Vposts$condition)] = "new"
+New_Vposts$newcondition[ New_Vposts$condition %in% c('excellent', 'like new', 'very good', 'surperb original', 
+                                             'mint', 'certified') & !is.na(New_Vposts$condition)] = "excellent"
+New_Vposts$newcondition[ New_Vposts$condition %in% c('preowned', 'pre owned', 'preownes', 'pre-owned', 'good', 'nice' ) & !is.na(New_Vposts$condition)] = "good"
+New_Vposts$newcondition[ New_Vposts$condition %in% c('fair', 'used', '0used', 'nice teuck') & !is.na(New_Vposts$condition)] = "fair"
+New_Vposts$newcondition[ New_Vposts$condition %in% c('207,400', 'ac/heater', 'complete parts car, blown engine', 'hit and run :( gently', 
+                                            'needs restoration!', 'needs work/for parts', 'restored', 'needs restored', 'needs bodywork', 'salvage', 
+                                            'needs total restore', 'not running', 'project car', 'restoration project', 'rough but runs', 'project', 
+                                            'front side damage', 'muscle car restore', 'needs work', 'nice rolling restoration', 'rebuildable project', 
+                                            'restore', 'parts', 'honnda', 'carfax guarantee!!') & !is.na(New_Vposts$condition)] = "poor"
+New_Vposts = cbind(New_Vposts, CarModels)
+New_Vposts$ageofcar = 2016 - New_Vposts$year
+bymodels = split(New_Vposts, New_Vposts$CarModels)
+New_Vposts$newcondition = sub('', NA, New_Vposts$newcondition)
+
+#300C (Chrysler)
+Chrys300 = bymodels$' 300C'
+
+#A4 (Audi) 
+A4 = bymodels$'A4'
+
+library(lattice)
+
+par(mfrow = c(2,2))
+boxplot(Chrys300$price ~ Chrys300$newcondition, subset=Chrys300$newcondition %in% c("excellent", "fair", "good"),  data=Chrys300, 
+        ylab = "Price", xlab = 'Condition', main = 'Price vs. Condition')
+plot(Chrys300$price ~ Chrys300$ageofcar, ylab = "Price", xlab = 'Age', main = 'Price vs. Age')
+plot(Chrys300$price ~ Chrys300$odometer, ylab = "Price", xlab = 'Mileage', main = 'Price vs. Mileage')
+boxplot(Chrys300$price ~ Chrys300$city, ylab = "Price", xlab = "Cities", main = "City Affect on Price")
+
+
+boxplot(A4$price ~ A4$newcondition, subset=A4$newcondition %in% c("excellent", "fair", "good"),  data=A4, 
+        ylab = "Price", xlab = 'Condition', main = 'Price vs. Condition')
+plot(A4$price ~ A4$ageofcar, ylab = "Price", xlab = 'Age', main = 'Price vs. Age')
+plot(A4$price ~ A4$odometer, ylab = "Price", xlab = 'Mileage', main = 'Price vs. Mileage')
+boxplot(A4$price ~ A4$city, ylab = "Price", xlab = "Cities", main = "City Affect on Price")
+
+
+#predict price
+ChrysPred = lm(Chrys300$price ~ Chrys300$newcondition+Chrys300$ageofcar+Chrys300$odometer)
+summary(ChrysPred)
+
+A4Pred = lm(A4$price ~ A4$newcondition+A4$ageofcar+A4$odometer)
+summary(A4Pred)
