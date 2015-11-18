@@ -1,0 +1,169 @@
+#Step I
+setwd("/Users/Eileen/Desktop/STA 141 Fall 2015/STA 141 Assignment 2/NASA")
+files = list.files("/Users/Eileen/Desktop/STA 141 Fall 2015/STA 141 Assignment 2/NASA", pattern = ".txt")
+library(reshape)
+readfiles <- function(file){
+  dat = readLines(file)
+  dat = dat[substring(11, 1 ,1) != " +"]   
+  dat1 = strsplit(dat[7:30], " +")          ##Cut out header and lat values
+  dat_table = read.table(file, skip = 7)
+  dat_table = dat_table[-c(2,3)]
+  long = unlist(strsplit(dat[6], " +"))        ##Make lat vector
+  long = cbind(long)
+  long = long[-1]                                ##Remove dead space  
+  time = unlist(strsplit(dat[5], " +"))       ##Make time vector
+  time = cbind(time)                           ##Make vector one element
+  time = time[4]                                 ##Make time just the actual date/time
+  dat_table = cbind(time, dat_table)        ##Give table a time column
+  df = as.data.frame(dat_table)                 ##Make dataframe out of table
+  colnames(df) = c("Time", "Latitude", long) ##change col names to longitude values
+  df = melt(df, id.vars = c("Time", "Latitude"),value.name = "Variable")
+  colnames(df) = c("Date", "Latitude", "Longitude", "Values")
+  df = df[c(2, 3, 4, 1)]
+  return(df)
+}
+data = lapply(as.list(files), readfiles)
+head(data[[1]])
+cloudhigh = do.call(rbind, data[1:72])
+cloudlow = do.call(rbind, data[73:144])
+cloudmid = do.call(rbind, data[145:216])
+ozone = do.call(rbind, data[217:288])
+pressure = do.call(rbind, data[289:360])
+surftemp = do.call(rbind, data[361:432])
+temperature = do.call(rbind, data[433:504])
+head(cloudlow)
+
+#Step II
+#Part I:
+filelist = list(cloudhigh, cloudmid, cloudlow, ozone, pressure, surftemp, temperature)
+
+check = function(variable) {
+  compare = c()
+  VLL = paste(variable$Latitude, variable$Longitude)
+  CLL = paste(cloudhigh$Latitude, cloudhigh$Longitude)
+  compare$locations = identical(VLL, CLL)
+  compare$Dates = identical(variable$Date, cloudhigh$Date)
+  return(compare)
+}
+sapply(filelist, check)
+#Part II:
+table = data.frame(cloudhigh$Date, cloudhigh$Latitude, cloudhigh$Longitude, cloudhigh$Values, cloudmid$Values, cloudlow$Values, ozone$Values, pressure$Values, surftemp$Values, temperature$Values)
+colnames(table) = c("Date", "Latitude", "Longitude", "CloudHigh", "CloudMid", "CloudLow", "Ozone", "Pressure", "SurfTemp", "Temperature")
+head(table)
+?data.frame
+#Step III
+#Part 1
+elevation.table = read.table('intlvtn.dat', skip = 1)
+elevation = readLines("intlvtn.dat")
+elevation = elevation[substring(11, 1, 1) != " +"]
+elevation = strsplit(elevation, " ")
+long = elevation[1]
+long = sapply(long, paste, "W", sep = '')
+long = rep(long, each = 24)
+elevation_long = as.character(long)
+elevation_long
+elevation$Latitude = sapply(elevation.table[,1], paste, "N", sep = '')
+elevation_lat = rep(elevation$Latitude, 24)
+elevation_lat
+df = data.frame(mean = as.numeric(elevation.table[1,]))
+mean = as.matrix(elevation.table[,-(1)]) #first columns is the latitude. take that out.
+mean
+mean = as.numeric(t(mean))
+length(mean)
+df = data.frame(elevation_long, elevation_lat, mean)
+LONG = substring(elevation_long, 1, nchar(elevation_long) - 1)
+LAT = substring(elevation_lat, 1, nchar(elevation_lat) - 1)
+#check:
+round1 = function(long) { 
+  long = gsub("-", "", long)
+{
+  substring(long, 1, nchar(long) - 4)    
+}
+}
+elelong = lapply(elevation_long, round1)
+elelat = lapply(elevation_lat, round1)
+elelat
+round2 = function(long) substring(long, 1, nchar(long) - 3)
+varlong = lapply(as.character(cloudhigh$Longitude)[1:576], round2)
+varlat = lapply(as.character(cloudhigh$Latitude)[1:576], round2)
+identical(elelong, varlong)
+identical(elelat, varlat) #YAYYY both are true
+#Step III
+#Part 2
+elevation.Values = rep(mean, 24)
+Latitude = rep(LAT, 24)
+Longitude = rep(LONG, each = 24)
+Latitude = as.factor(Latitude)
+Longitude = as.factor(Longitude)
+table$Latitude = NULL
+table$Longitude = NULL
+head(table)
+table_new = data.frame(Latitude, Longitude, table, elevation.Values)
+table_new = table_new[c(3,1,2,4,5,6,7,8,9,10,11)]
+colnames(table_new) = c("Date", "Latitude", "Longitude", "CloudHigh", "CloudMid", "CloudLow", "Ozone", "Pressure", "SurfTemp", "Temperature", "Elevation")
+head(table_new)
+#Step IV
+#Part 1
+byCloudLow = cut(as.numeric(table_new[, "CloudLow"]), 4) #cut cloudlow into 4 levels
+CloudLowLevels = c("grey", "blue", "green", "red")[byCloudLow] #set the levels into 4 colors
+plot(table_new[, c("Pressure", "Temperature")], col = CloudLowLevels, main = "Pressure vs Temperature Based on CloudLow", cex = 0.5)
+#plot only the pressure and temperature columns from table_new color code them based on the cloudlow levels
+#Part 2
+as.data.frame(cbind(unique(as.character(table_new$Latitude)), unique(as.character(table_new$Longitude))))
+corner1 = subset(table_new, Latitude=="36.25" & Longitude == "-113.75")
+corner2 = subset(table_new, Latitude=="36.25" & Longitude == "-56.25")
+corner3 = subset(table_new, Latitude=="-21.25" & Longitude == "-113.75")
+corner4 = subset(table_new, Latitude=="-21.25" & Longitude == "-56.25")
+
+library(lattice)
+corner1$Date = strptime(corner1$Date, "%d-%b-%Y")
+corner2$Date = strptime(corner2$Date, "%d-%b-%Y")
+corner3$Date = strptime(corner3$Date, "%d-%b-%Y")
+corner4$Date = strptime(corner4$Date, "%d-%b-%Y")
+class(corner2)
+library(ggplot2)
+library(gridExtra)
+grid1 = ggplot(data = corner1, aes(Date, Temperature, title = "Spatial Grid Corner 1")) + geom_line() 
+grid2 = ggplot(data = corner2, aes(Date, Temperature, title = "Spatial Grid Corner 2")) + geom_line()
+grid3 = ggplot(data = corner3, aes(Date, Temperature, title = "Spatial Grid Corner 3")) + geom_line()
+grid4 = ggplot(data = corner4, aes(Date, Temperature, title = "Spatial Grid Corner 4")) + geom_line()
+grid.arrange(grid1, grid2, grid3, grid4, ncol=2)
+#Part 3#######################
+sapply(c(corner1, corner2, corner3, corner4), length) #check the class of each column
+corner1$CloudLow = as.numeric(corner1$CloudLow) #change all variables to numeric
+corner2$CloudLow = as.numeric(corner2$CloudLow)
+corner3$CloudLow = as.numeric(corner3$CloudLow)
+corner4$CloudLow = as.numeric(corner4$CloudLow)
+corners = rbind(corner1, corner2, corner3, corner4)
+library(plyr)
+CloudHigh_MS = ddply(corners, c("Date", "Latitude", "Longitude"),summarise,mean=mean(CloudHigh),sd=sd(CloudHigh))
+CloudMid_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(CloudMid),sd=sd(CloudMid))
+CloudLow_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(CloudLow),sd=sd(CloudLow))
+Ozone_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(Ozone),sd=sd(Ozone))
+Pressure_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(Pressure),sd=sd(Pressure))
+SurfTemp_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(SurfTemp),sd=sd(SurfTemp))
+Temperature_MS = ddply(corners,c("Date", "Latitude", "Longitude"),summarise,mean=mean(Temperature),sd=sd(Temperature))
+CloudHigh_MS
+CloudLow_MS
+CloudMid_MS
+Ozone_MS
+Pressure_MS
+SurfTemp_MS
+Temperature_MS
+#Part 4#################
+avgpressure = matrix(Pressure_MS[,4],24,24)
+avgpressure
+
+
+# try to use map to make the plot
+library(maps)
+library("mapdata")
+map(database = "world", col = "darkgray", xlim = c(50, 130),ylim = c(0, 50), panel.first = grid())
+points(avgpressure[,1], maptabledat[,2], pch = 20 )
+text(maptabledat[,1],avgpressure[,2], avgpressure[,3], cex = 0.5 )
+axis(1, lwd = 0); axis(2, lwd = 0); axis(3, lwd = 0); axis(4, lwd = 0)
+#Part 5
+surftemp_mean = sapply(table_new$SurfTemp, function(x) sapply(x, mean, na.rm = TRUE))
+plot(surftemp_mean, table_new$Elevation, xlim = c(265, 315), xlab = "Average of Surface Temperature", ylab = "Elevation", main = "Surface Temperature Average vs. Elevation", cex = 0.5, col = "red")
+, xlim = c(Pressure_MS$Longitude[1], Pressure_MS$Longitude[3]), ylim = c(Pressure_MS$Latitude[1], Pressure_MS$Latitude[2])
+
