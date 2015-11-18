@@ -1,3 +1,4 @@
+######PART I#########
 load(url("http://eeyore.ucdavis.edu/stat141/Data/vehicles.rda"))
 ls()
 #1 How many observations are there in the data set?
@@ -165,3 +166,65 @@ boxplot(p ~ vposts$newcondition, xlim = levels(vposts$newcondition), ylab = 'odo
         main = 'Relationship Between Condition and Price of Cars')
 boxplot(ageofcar ~ vposts$newcondition, xlim = levels(vposts$newcondition), ylab = 'odometer', 
         xlab = 'condition', main = 'Relationship Between Condition and Age of Cars')
+
+
+######PART II##########
+ls()
+#First Anamolies
+names(vposts)
+tes = subset(vposts, maker == "tesla")[, c("price", "year")] #we can see that the prices for year 2015 and 2016 are lower than the rest
+tes
+ #a 2016 Tesla Model S. Google says tesla is targeting 35k$ for it.
+        #a 2015 Tesla Model S. Google says its 69900$
+tes$price[tes$price == 1500] = 350000 #2016
+tes$price[tes$price == 2000] = 69900 #2015
+tes #new prices are set
+#Second Anamolies
+p = vposts$price
+max(vposts$price, na.rm = TRUE) #600030000
+quantile(p, na.rm = TRUE, probs = seq(0.1,0.9, by = 0.1)) #really far from the .9 quartile
+hist(p, main='histogram of price', xlab = 'price of cars')
+rug(p,  lwd = 4, col = "red") #it becomes the outliers, so it makes the data inaccurate
+bodybyprice = split(vposts$body, vposts$price)
+bodybyprice$'600030000' #is says 6000 AND 30000. So this is a typo.
+p[ !is.na(p) &  p == max(p, na.rm = TRUE) ]   = 18000
+max(p, na.rm = TRUE) #we corrected the max value
+#third Anamolie
+y = vposts$year
+max(vposts$year) #can't be 2022 bc it's 6 years away from next year
+y[ !is.na(y) ]   = 2016
+max(y) #we've corrected the y
+#Find at least 3 interesting insights/characteristics/features illustrated by the data. 
+  #Explain in what way these insights are interesting (to whom? why?) and 
+  #provide evidence for any inference/conclusions you draw. 
+  #How generalizable are these insights to other vehicle sales data?
+#First feature
+
+ageofcar = 2016 - vposts$year
+tenold = (ageofcar > 66)
+subset(ageofcar, tenold == TRUE)
+table(tenold, vposts$transmission)
+
+#Second Feature
+library(lattice)
+max(vposts$odometer, na.rm = TRUE)
+byodometer = split(vposts$body, vposts$odometer)
+byodometer_y = split(vposts$year, vposts$odometer)
+byodometer$'1234567890'
+vposts$odometer[!is.na(vposts$odometer) & vposts$odometer == max(vposts$odometer, na.rm = TRUE)] = 204619 
+max(vposts$odometer, na.rm = TRUE)
+byodometer$'1e+08'
+vposts$odometer[!is.na(vposts$odometer) & vposts$odometer == max(vposts$odometer, na.rm = TRUE)] = 0 
+max(vposts$odometer, na.rm = TRUE)
+byodometer_y$'1.6e+07'
+vposts$odometer[!is.na(vposts$odometer) & vposts$odometer == max(vposts$odometer, na.rm = TRUE)] = 200000 
+max(vposts$odometer, na.rm = TRUE) 
+vposts$odometer[!is.na(vposts$odometer) & vposts$odometer == max(vposts$odometer, na.rm = TRUE)] = 100000 
+max(vposts$odometer, na.rm = TRUE)
+plot(ageofcar, vposts$odometer, xlim = c(0, 100), col = ‘red’, xlab = 'age of car', ylab = 'odometer reading', main = 'Relationship Between Age and Odometer of Cars')    
+#Third feature
+library(lattice) 
+par(mfrow = c(1, 1))
+barplot(head(sort(table(vposts$price), decreasing = TRUE)), xlab = 'Prices', 
+             ylab = 'Number of Cars', main = 'Top 6 Prices of Cars for Sale')
+  #surprising to see that the most number of cars are sold for $1.
